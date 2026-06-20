@@ -12,7 +12,8 @@ body{font-family:"DM Sans",sans-serif;background:var(--cream);color:var(--ink);m
 header{background:var(--ink);color:var(--white);padding:1.5rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
 header h1{font-family:"Playfair Display",serif;font-size:clamp(1.4rem,4vw,2rem);font-weight:400;letter-spacing:.02em}
 header p{font-size:.85rem;color:#aaa;margin-top:2px}
-.btn{font-family:"DM Sans",sans-serif;font-size:.875rem;font-weight:500;padding:.55rem 1.25rem;border-radius:6px;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn{font-family:"DM Sans",sans-serif;font-size:.875rem;font-weight:500;padding:.55rem 1.25rem;border-radius:6px;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .btn-primary{background:var(--accent);color:white}
 .btn-primary:disabled{background:#bbb;cursor:not-allowed}
 main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
@@ -63,8 +64,9 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
 .section-header{margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
 .section-header h2{font-family:"Playfair Display",serif;font-size:1.25rem;font-weight:400;color:var(--ink)}
 .section-header p{font-size:.85rem;color:var(--muted);margin-top:2px}
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .modal-overlay.open{display:flex}
+.modal{background:white;border-radius:14px;width:100%;max-width:520px;margin:auto;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .modal{background:white;border-radius:14px;width:100%;max-width:520px;margin:auto}
 .modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .modal-header h2{font-family:"Playfair Display",serif;font-size:1.2rem;font-weight:500}
@@ -153,21 +155,21 @@ var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 var STORAGE_BUCKET = 'artwork-images';
 var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var allArtworks = [];
- 
+
 function switchTab(tab) {
   document.getElementById('tab-available').classList.toggle('active', tab === 'available');
   document.getElementById('tab-claimed').classList.toggle('active', tab === 'claimed');
   document.getElementById('panel-available').style.display = tab === 'available' ? '' : 'none';
   document.getElementById('panel-claimed').style.display = tab === 'claimed' ? '' : 'none';
 }
- 
+
 async function loadArtworks() {
   var r = await db.from('artworks').select('*').order('id', { ascending: true });
   if (r.error) { showToast('Could not load: ' + r.error.message); return; }
   allArtworks = r.data || [];
   render();
 }
- 
+
 function render() {
   var available = allArtworks.filter(function(a) { return !a.claimed_by; });
   var claimed = allArtworks.filter(function(a) { return !!a.claimed_by; });
@@ -179,7 +181,7 @@ function render() {
   renderGrid('grid-available', available, false);
   renderGrid('grid-claimed', claimed, true);
 }
- 
+
 function renderGrid(gridId, list, isClaimed) {
   var grid = document.getElementById(gridId);
   if (!list.length) {
@@ -188,7 +190,7 @@ function renderGrid(gridId, list, isClaimed) {
   }
   grid.innerHTML = list.map(function(a) { return makeCard(a, isClaimed); }).join('');
 }
- 
+
 function makeCard(a, isClaimed) {
   var img = a.image_url ? '<img src="' + esc(a.image_url) + '" alt="' + esc(a.title) + '" loading="lazy">' : '<div class="no-img"><svg fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><span>No photo</span></div>';
   var date = a.created_at ? new Date(a.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '';
@@ -197,7 +199,7 @@ function makeCard(a, isClaimed) {
     : '<div class="claim-box"><div class="claim-box-header">Claim this piece</div><div class="claim-box-body"><input type="text" id="ci-' + a.id + '" placeholder="Enter your name..."><button class="btn-save-claim" id="cb-' + a.id + '" onclick="doClaim(' + a.id + ')">Save Claim</button></div></div>';
   return '<div class="artwork-card' + (isClaimed ? ' claimed' : '') + '"><div class="artwork-image-wrap">' + img + '<div class="badge-id">ID ' + a.id + '</div>' + (isClaimed ? '<span class="badge-claimed-tag">Claimed</span>' : '') + '</div><div class="artwork-body"><div class="artwork-title-row"><div class="artwork-title">' + esc(a.title) + '</div><button class="btn-delete" onclick="doDelete(' + a.id + ')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button></div>' + (a.description ? '<p class="artwork-desc">' + esc(a.description) + '</p>' : '<p class="artwork-desc" style="color:#ccc;font-style:italic">No description</p>') + (date ? '<p class="artwork-date">' + date + '</p>' : '') + bottom + '</div></div>';
 }
- 
+
 async function addArtwork() {
   var title = document.getElementById('inTitle').value.trim();
   var desc = document.getElementById('inDesc').value.trim();
@@ -222,7 +224,7 @@ async function addArtwork() {
   } catch(e) { showToast(e.message); }
   finally { btn.disabled=false; btn.innerHTML='Add to Gallery'; }
 }
- 
+
 async function doClaim(id) {
   var input = document.getElementById('ci-' + id);
   var name = input ? input.value.trim() : '';
@@ -238,7 +240,7 @@ async function doClaim(id) {
   render(); switchTab('claimed');
   showToast('Claimed by ' + name + '! Moved to Claimed tab.');
 }
- 
+
 async function doUnclaim(id) {
   if (!confirm('Remove this claim?')) return;
   var r = await db.from('artworks').update({claimed_by:null}).eq('id',id);
@@ -248,7 +250,7 @@ async function doUnclaim(id) {
   render(); switchTab('available');
   showToast('Claim removed.');
 }
- 
+
 async function doDelete(id) {
   if (!confirm('Permanently delete this artwork?')) return;
   var art = allArtworks.find(function(a){return a.id===id;});
@@ -258,8 +260,11 @@ async function doDelete(id) {
   allArtworks = allArtworks.filter(function(a){return a.id!==id;});
   render(); showToast('Artwork deleted.');
 }
- 
-function openModal() { document.getElementById('modalOverlay').classList.add('open'); document.getElementById('inTitle').focus(); }
+
+function openModal() {
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(function(){ document.getElementById('inTitle').focus(); }, 300);
+}
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
   document.getElementById('inTitle').value=''; document.getElementById('inDesc').value='';
@@ -274,7 +279,7 @@ function previewFile(e) {
 }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function showToast(msg) { var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},3000); }
- 
+
 db.channel('artworks').on('postgres_changes',{event:'*',schema:'public',table:'artworks'},function(){loadArtworks();}).subscribe();
 loadArtworks();
 </script>
