@@ -162,7 +162,7 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
   <div class="pwd-box">
     <div class="pwd-header">
       <h2>Admin Password Required</h2>
-      <button class="modal-close" onclick="closePwd()">X</button>
+      <button class="modal-close" onclick="closePwd(true)">X</button>
     </div>
     <div class="pwd-body">
       <p>Only the gallery admin can delete artwork. Enter the password to continue.</p>
@@ -170,7 +170,7 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
       <div class="pwd-error" id="pwdError">Incorrect password. Please try again.</div>
     </div>
     <div class="pwd-footer">
-      <button class="btn-cancel" onclick="closePwd()">Go Back</button>
+      <button class="btn-cancel" onclick="closePwd(true)">Go Back</button>
       <button class="btn btn-primary" onclick="confirmDelete()">Confirm Delete</button>
     </div>
   </div>
@@ -178,7 +178,7 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 var SUPABASE_URL = 'https://cosfeksbduckvwzcgdyv.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvc2Zla3NiZHVja3Z3emNnZHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODIzNjAsImV4cCI6MjA5NjI1ODM2MH0.lBuVcOKMhKbd0En-Abf98AA1XRkfPFJ_m-RhdltsTVQ';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvc2Zla3NiZHVja3Z3emNnZHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODIzNjAsImV4cCI6MjA5NjI1ODM2MH0.lBuVcOKMhKbd0En-Abf98AA1XRkfPFJ_m-RhdltsTVQ;
 var DELETE_PASSWORD = 'Sienna123!';
 var pendingDeleteId = null;
 var STORAGE_BUCKET = 'artwork-images';
@@ -304,13 +304,14 @@ async function confirmDelete() {
   var r = await db.from('artworks').delete().eq('id',id);
   if (r.error) { showToast('Could not delete: ' + r.error.message); return; }
   allArtworks = allArtworks.filter(function(a){return a.id!==id;});
+  pendingDeleteId = null;
   render(); showToast('Artwork deleted.');
 }
-function closePwd() {
+function closePwd(cancel) {
   document.getElementById('pwdOverlay').classList.remove('open');
   document.getElementById('pwdInput').value = '';
   document.getElementById('pwdError').style.display = 'none';
-  pendingDeleteId = null;
+  if (cancel) pendingDeleteId = null;
 }
 
 function openModal() {
