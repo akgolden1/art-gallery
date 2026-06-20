@@ -86,6 +86,12 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
 .modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:.75rem;justify-content:flex-end}
 .btn-cancel{background:var(--cream);color:var(--muted);border:1px solid var(--border);font-family:"DM Sans",sans-serif;font-size:.875rem;font-weight:500;padding:.55rem 1.25rem;border-radius:6px;cursor:pointer}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:3000;align-items:center;justify-content:center;padding:1rem;cursor:zoom-out}
+.lightbox.open{display:flex}
+.lightbox img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.lightbox-close{position:absolute;top:1rem;right:1rem;background:rgba(255,255,255,.15);border:none;color:white;width:36px;height:36px;border-radius:50%;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.lightbox-close:hover{background:rgba(255,255,255,.3)}
+.artwork-image-wrap img{cursor:zoom-in}
 .pwd-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:1rem}
 .pwd-overlay.open{display:flex}
 .pwd-box{background:white;border-radius:14px;width:100%;max-width:360px;overflow:hidden}
@@ -158,6 +164,10 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">&#10005;</button>
+  <img id="lightboxImg" src="" alt="Full size artwork" onclick="event.stopPropagation()" />
+</div>
 <div class="pwd-overlay" id="pwdOverlay">
   <div class="pwd-box">
     <div class="pwd-header">
@@ -221,7 +231,7 @@ function renderGrid(gridId, list, isClaimed) {
 }
 
 function makeCard(a, isClaimed) {
-  var img = a.image_url ? '<img src="' + esc(a.image_url) + '" alt="' + esc(a.title) + '" loading="lazy">' : '<div class="no-img"><svg fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><span>No photo</span></div>';
+  var img = a.image_url ? '<img src="' + esc(a.image_url) + '" alt="' + esc(a.title) + '" loading="lazy" onclick="openLightbox(\'' + esc(a.image_url) + '\')">' : '<div class="no-img"><svg fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><span>No photo</span></div>';
   var date = a.created_at ? new Date(a.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '';
   var bottom = isClaimed
     ? '<div class="claimed-info"><div class="claimed-info-label">Claimed by</div><div class="claimed-info-name">' + esc(a.claimed_by) + '</div><button class="btn-unclaim" onclick="doUnclaim(' + a.id + ')">Remove claim</button></div>'
@@ -334,6 +344,17 @@ function previewFile(e) {
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function showToast(msg) { var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},3000); }
 
+function openLightbox(url) {
+  document.getElementById('lightboxImg').src = url;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightboxImg').src = '';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeLightbox(); });
 db.channel('artworks').on('postgres_changes',{event:'*',schema:'public',table:'artworks'},function(){loadArtworks();}).subscribe();
 loadArtworks();
 </script>
