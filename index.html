@@ -199,7 +199,8 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 var SUPABASE_URL = 'https://cosfeksbduckvwzcgdyv.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvc2Zla3NiZHVja3Z3emNnZHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODIzNjAsImV4cCI6MjA5NjI1ODM2MH0.lBuVcOKMhKbd0En-Abf98AA1XRkfPFJ_m-RhdltsTVQ';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvc2Zla3NiZHVja3Z3emNnZHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODIzNjAsImV4cCI6MjA5NjI1ODM2MH0.lBuVcOKMhKbd0En-Abf98AA1XRkfPFJ_m-RhdltsTVQ
+';
 var DELETE_PASSWORD = 'Sienna123!';
 var pendingDeleteId = null;
 var batchFiles = [];
@@ -254,29 +255,49 @@ function makeCard(a, isClaimed) {
 }
 
 async function addArtwork() {
-  var title = document.getElementById('inTitle').value.trim();
-  var desc = document.getElementById('inDesc').value.trim();
-  if (!title) { showToast('Please enter a title'); return; }
+  var title = document.getElementById('batchTitle').value.trim();
+  var desc = document.getElementById('batchDesc').value.trim();
+  if (!title) { showToast('Please enter a title'); document.getElementById('batchTitle').focus(); return; }
+
+  // Save current item details
+  batchData.push({ file: batchFiles[batchIndex], title: title, desc: desc });
+
+  // If not on last photo yet, advance to next
+  if (batchIndex < batchFiles.length - 1) {
+    batchIndex++;
+    showBatchItem();
+    return;
+  }
+
+  // All photos filled in — now upload everything
   var btn = document.getElementById('btnAdd');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving...';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving ' + batchData.length + ' items...';
   try {
-    var imageUrl = null;
-    var file = document.getElementById('fileInput').files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB'); return; }
-      var fname = 'art_' + Date.now() + '.' + file.name.split('.').pop();
-      var up = await db.storage.from(STORAGE_BUCKET).upload(fname, file, {cacheControl:'3600',upsert:false});
-      if (up.error) throw new Error('Upload failed: ' + up.error.message);
-      imageUrl = db.storage.from(STORAGE_BUCKET).getPublicUrl(fname).data.publicUrl;
+    var added = 0;
+    for (var i = 0; i < batchData.length; i++) {
+      var item = batchData[i];
+      var imageUrl = null;
+      if (item.file) {
+        if (item.file.size > 5 * 1024 * 1024) { showToast('Photo ' + (i+1) + ' over 5MB, skipping'); continue; }
+        var fname = 'art_' + Date.now() + '_' + i + '.' + item.file.name.split('.').pop();
+        var up = await db.storage.from(STORAGE_BUCKET).upload(fname, item.file, {cacheControl:'3600', upsert:false});
+        if (up.error) throw new Error('Upload failed: ' + up.error.message);
+        imageUrl = db.storage.from(STORAGE_BUCKET).getPublicUrl(fname).data.publicUrl;
+      }
+      var ins = await db.from('artworks').insert([{title:item.title, description:item.desc, image_url:imageUrl}]).select().single();
+      if (ins.error) throw new Error(ins.error.message);
+      allArtworks.push(ins.data);
+      added++;
     }
-    var ins = await db.from('artworks').insert([{title:title,description:desc,image_url:imageUrl}]).select().single();
-    if (ins.error) throw new Error(ins.error.message);
-    allArtworks.push(ins.data);
-    allArtworks.sort(function(a,b){return a.id-b.id;});
+    allArtworks.sort(function(a,b){ return a.id - b.id; });
     closeModal(); render(); switchTab('available');
-    showToast('Artwork #' + ins.data.id + ' added!');
-  } catch(e) { showToast(e.message); }
-  finally { btn.disabled=false; btn.innerHTML='Add to Gallery'; }
+    showToast(added + ' artwork' + (added !== 1 ? 's' : '') + ' added!');
+  } catch(e) {
+    showToast(e.message || 'Could not save artwork.');
+    btn.disabled = false;
+    btn.innerHTML = batchFiles.length > 1 ? 'Save All to Gallery' : 'Add to Gallery';
+  }
 }
 
 async function doClaim(id) {
