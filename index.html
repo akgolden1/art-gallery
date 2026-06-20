@@ -368,6 +368,8 @@ function openModal() {
   document.getElementById('modalOverlay').classList.add('open');
   document.getElementById('btnAdd').style.display = 'none';
   document.getElementById('btnNext').style.display = 'none';
+  document.getElementById('step1').style.display = '';
+  document.getElementById('step2').style.display = 'none';
 }
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
@@ -386,15 +388,34 @@ function overlayClick(e) { if(e.target===document.getElementById('modalOverlay')
 function previewFile(e) {
   var files = e.target.files;
   if (!files.length) return;
-  var file = files[0];
+  // Show preview of first file
   var reader = new FileReader();
   reader.onload = function(ev) {
     document.getElementById('previewImg').src = ev.target.result;
     document.getElementById('preview').style.display = 'block';
   };
-  reader.readAsDataURL(file);
-  document.getElementById('btnNext').style.display = files.length > 1 ? '' : 'none';
-  document.getElementById('btnAdd').style.display = files.length > 1 ? 'none' : '';
+  reader.readAsDataURL(files[0]);
+  // Show correct button based on number of files
+  if (files.length === 1) {
+    // Single file - go straight to title/desc step
+    batchFiles = [files[0]];
+    batchIndex = 0;
+    batchData = [];
+    document.getElementById('step1').style.display = 'none';
+    document.getElementById('step2').style.display = '';
+    document.getElementById('batchPreviewImg').src = document.getElementById('previewImg').src;
+    document.getElementById('batchProgress').textContent = '';
+    document.getElementById('batchTitle').value = '';
+    document.getElementById('batchDesc').value = '';
+    document.getElementById('btnNext').style.display = 'none';
+    document.getElementById('btnAdd').style.display = '';
+    document.getElementById('btnAdd').textContent = 'Add to Gallery';
+    setTimeout(function(){ document.getElementById('batchTitle').focus(); }, 100);
+  } else {
+    // Multiple files - show Next button to start batch flow
+    document.getElementById('btnNext').style.display = '';
+    document.getElementById('btnAdd').style.display = 'none';
+  }
 }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function showToast(msg) { var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},3000); }
