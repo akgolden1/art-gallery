@@ -178,7 +178,7 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 var SUPABASE_URL = 'https://cosfeksbduckvwzcgdyv.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvc2Zla3NiZHVja3Z3emNnZHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODIzNjAsImV4cCI6MjA5NjI1ODM2MH0.lBuVcOKMhKbd0En-Abf98AA1XRkfPFJ_m-RhdltsTVQ;
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvc2Zla3NiZHVja3Z3emNnZHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODIzNjAsImV4cCI6MjA5NjI1ODM2MH0.lBuVcOKMhKbd0En-Abf98AA1XRkfPFJ_m-RhdltsTVQ';
 var DELETE_PASSWORD = 'Sienna123!';
 var pendingDeleteId = null;
 var STORAGE_BUCKET = 'artwork-images';
@@ -226,7 +226,7 @@ function makeCard(a, isClaimed) {
   var bottom = isClaimed
     ? '<div class="claimed-info"><div class="claimed-info-label">Claimed by</div><div class="claimed-info-name">' + esc(a.claimed_by) + '</div><button class="btn-unclaim" onclick="doUnclaim(' + a.id + ')">Remove claim</button></div>'
     : '<div class="claim-box"><div class="claim-box-header">Claim this piece</div><div class="claim-box-body"><input type="text" id="ci-' + a.id + '" placeholder="Enter your name..."><button class="btn-save-claim" id="cb-' + a.id + '" onclick="doClaim(' + a.id + ')">Save Claim</button></div></div>';
-  return '<div class="artwork-card' + (isClaimed ? ' claimed' : '') + '"><div class="artwork-image-wrap">' + img + '<div class="badge-id">ID ' + a.id + '</div>' + (isClaimed ? '<span class="badge-claimed-tag">Claimed</span>' : '') + '</div><div class="artwork-body"><div class="artwork-title-row"><div class="artwork-title">' + esc(a.title) + '</div><button class="btn-delete" onclick="doDelete(' + a.id + ')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button></div>' + (a.description ? '<p class="artwork-desc">' + esc(a.description) + '</p>' : '<p class="artwork-desc" style="color:#ccc;font-style:italic">No description</p>') + (date ? '<p class="artwork-date">' + date + '</p>' : '') + bottom + '</div></div>';
+  return '<div class="artwork-card' + (isClaimed ? ' claimed' : '') + '"><div class="artwork-image-wrap">' + img + '<div class="badge-id">ID ' + a.id + '</div>' + (isClaimed ? '<span class="badge-claimed-tag">Claimed</span>' : '') + '</div><div class="artwork-body"><div class="artwork-title-row"><div class="artwork-title">' + esc(a.title) + '</div><button class="btn-delete" data-id="' + a.id + '" onclick="doDelete(this)"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button></div>' + (a.description ? '<p class="artwork-desc">' + esc(a.description) + '</p>' : '<p class="artwork-desc" style="color:#ccc;font-style:italic">No description</p>') + (date ? '<p class="artwork-date">' + date + '</p>' : '') + bottom + '</div></div>';
 }
 
 async function addArtwork() {
@@ -281,7 +281,8 @@ async function doUnclaim(id) {
   showToast('Claim removed.');
 }
 
-function doDelete(id) {
+function doDelete(btn) {
+  var id = btn.getAttribute('data-id');
   pendingDeleteId = id;
   document.getElementById('pwdInput').value = '';
   document.getElementById('pwdError').style.display = 'none';
@@ -301,9 +302,9 @@ async function confirmDelete() {
   if (!id) { showToast('No artwork selected.'); return; }
   var art = allArtworks.find(function(a){return a.id===id;});
   if (art && art.image_url) { await db.storage.from(STORAGE_BUCKET).remove([art.image_url.split('/').pop()]); }
-  var r = await db.from('artworks').delete().eq('id',id);
+  var r = await db.from('artworks').delete().eq('id', parseInt(id));
   if (r.error) { showToast('Could not delete: ' + r.error.message); return; }
-  allArtworks = allArtworks.filter(function(a){return a.id!==id;});
+  allArtworks = allArtworks.filter(function(a){return a.id !== parseInt(id);});
   pendingDeleteId = null;
   render(); showToast('Artwork deleted.');
 }
