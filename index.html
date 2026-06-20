@@ -296,12 +296,13 @@ async function confirmDelete() {
     document.getElementById('pwdInput').focus();
     return;
   }
-  closePwd();
   var id = pendingDeleteId;
+  closePwd();
+  if (!id) { showToast('No artwork selected.'); return; }
   var art = allArtworks.find(function(a){return a.id===id;});
   if (art && art.image_url) { await db.storage.from(STORAGE_BUCKET).remove([art.image_url.split('/').pop()]); }
   var r = await db.from('artworks').delete().eq('id',id);
-  if (r.error) { showToast('Could not delete.'); return; }
+  if (r.error) { showToast('Could not delete: ' + r.error.message); return; }
   allArtworks = allArtworks.filter(function(a){return a.id!==id;});
   render(); showToast('Artwork deleted.');
 }
