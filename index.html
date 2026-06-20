@@ -86,6 +86,17 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
 .modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:.75rem;justify-content:flex-end}
 .btn-cancel{background:var(--cream);color:var(--muted);border:1px solid var(--border);font-family:"DM Sans",sans-serif;font-size:.875rem;font-weight:500;padding:.55rem 1.25rem;border-radius:6px;cursor:pointer}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
+.pwd-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:1rem}
+.pwd-overlay.open{display:flex}
+.pwd-box{background:white;border-radius:14px;width:100%;max-width:360px;overflow:hidden}
+.pwd-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.pwd-header h2{font-family:"Playfair Display",serif;font-size:1.1rem;font-weight:500}
+.pwd-body{padding:1.5rem}
+.pwd-body p{font-size:.875rem;color:var(--muted);margin-bottom:1rem}
+.pwd-body input{width:100%;font-family:"DM Sans",sans-serif;font-size:.9rem;padding:.6rem .85rem;border:1px solid var(--border);border-radius:8px;background:var(--cream);color:var(--ink);outline:none}
+.pwd-body input:focus{border-color:var(--accent)}
+.pwd-error{font-size:.8rem;color:var(--red);margin-top:.5rem;display:none}
+.pwd-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:.75rem;justify-content:flex-end}
 @keyframes spin{to{transform:rotate(360deg)}}
 .page-loader{text-align:center;padding:4rem;color:var(--muted);grid-column:1/-1}
 .toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:white;font-size:.875rem;padding:.6rem 1.25rem;border-radius:8px;opacity:0;transition:all .25s;pointer-events:none;z-index:2000;white-space:nowrap}
@@ -147,10 +158,29 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<div class="pwd-overlay" id="pwdOverlay">
+  <div class="pwd-box">
+    <div class="pwd-header">
+      <h2>Admin Password Required</h2>
+      <button class="modal-close" onclick="closePwd()">X</button>
+    </div>
+    <div class="pwd-body">
+      <p>Only the gallery admin can delete artwork. Enter the password to continue.</p>
+      <input type="password" id="pwdInput" placeholder="Enter password..." onkeydown="if(event.key==='Enter') confirmDelete()" />
+      <div class="pwd-error" id="pwdError">Incorrect password. Please try again.</div>
+    </div>
+    <div class="pwd-footer">
+      <button class="btn-cancel" onclick="closePwd()">Go Back</button>
+      <button class="btn btn-primary" onclick="confirmDelete()">Confirm Delete</button>
+    </div>
+  </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-var SUPABASE_URL = 'https://cosfeksbduckvwzcgdyv.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvc2Zla3NiZHVja3Z3emNnZHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODIzNjAsImV4cCI6MjA5NjI1ODM2MH0.lBuVcOKMhKbd0En-Abf98AA1XRkfPFJ_m-RhdltsTVQ';
+var SUPABASE_URL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvc2Zla3NiZHVja3Z3emNnZHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODIzNjAsImV4cCI6MjA5NjI1ODM2MH0.lBuVcOKMhKbd0En-Abf98AA1XRkfPFJ_m-RhdltsTVQ';
+var SUPABASE_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
+var DELETE_PASSWORD = 'Sienna123!';
+var pendingDeleteId = null;
 var STORAGE_BUCKET = 'artwork-images';
 var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var allArtworks = [];
@@ -251,14 +281,35 @@ async function doUnclaim(id) {
   showToast('Claim removed.');
 }
 
-async function doDelete(id) {
-  if (!confirm('Permanently delete this artwork?')) return;
+function doDelete(id) {
+  pendingDeleteId = id;
+  document.getElementById('pwdInput').value = '';
+  document.getElementById('pwdError').style.display = 'none';
+  document.getElementById('pwdOverlay').classList.add('open');
+  setTimeout(function(){ document.getElementById('pwdInput').focus(); }, 300);
+}
+async function confirmDelete() {
+  var pwd = document.getElementById('pwdInput').value;
+  if (pwd !== DELETE_PASSWORD) {
+    document.getElementById('pwdError').style.display = 'block';
+    document.getElementById('pwdInput').value = '';
+    document.getElementById('pwdInput').focus();
+    return;
+  }
+  closePwd();
+  var id = pendingDeleteId;
   var art = allArtworks.find(function(a){return a.id===id;});
   if (art && art.image_url) { await db.storage.from(STORAGE_BUCKET).remove([art.image_url.split('/').pop()]); }
   var r = await db.from('artworks').delete().eq('id',id);
   if (r.error) { showToast('Could not delete.'); return; }
   allArtworks = allArtworks.filter(function(a){return a.id!==id;});
   render(); showToast('Artwork deleted.');
+}
+function closePwd() {
+  document.getElementById('pwdOverlay').classList.remove('open');
+  document.getElementById('pwdInput').value = '';
+  document.getElementById('pwdError').style.display = 'none';
+  pendingDeleteId = null;
 }
 
 function openModal() {
