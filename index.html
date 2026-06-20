@@ -144,22 +144,33 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
       <h2>Add New Artwork</h2>
       <button class="modal-close" onclick="closeModal()">X</button>
     </div>
-    <div class="modal-body">
-      <div class="form-group"><label>Artwork Title</label><input type="text" id="inTitle" placeholder="e.g. Untitled No. 3" /></div>
-      <div class="form-group"><label>Description</label><textarea id="inDesc" placeholder="Medium, size, year, notes..."></textarea></div>
-      <div class="form-group">
-        <label>Photo</label>
-        <div class="upload-area" id="uploadArea">
-          <input type="file" accept="image/*" id="fileInput" onchange="previewFile(event)" />
-          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
-          <p><strong>Click to upload</strong> or drag and drop<br><small style="color:#bbb">Max 5MB</small></p>
+    <div class="modal-body" id="modalBody">
+      <!-- Step 1: Photo selection -->
+      <div id="step1">
+        <div class="form-group">
+          <label>Photos</label>
+          <div class="upload-area" id="uploadArea">
+            <input type="file" accept="image/*" id="fileInput" onchange="previewFile(event)" multiple />
+            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+            <p><strong>Click to upload</strong> or drag and drop<br><small style="color:#bbb">Select one or multiple photos - Max 5MB each</small></p>
+          </div>
+          <div class="upload-preview" id="preview"><img id="previewImg" src="" alt="Preview" /></div>
         </div>
-        <div class="upload-preview" id="preview"><img id="previewImg" src="" alt="Preview" /></div>
+      </div>
+      <!-- Step 2: Fill in details for each photo -->
+      <div id="step2" style="display:none">
+        <div id="batchProgress" style="font-size:.82rem;color:var(--muted);margin-bottom:1rem;text-align:center"></div>
+        <div id="batchPreviewWrap" style="border-radius:8px;overflow:hidden;margin-bottom:1rem;max-height:200px">
+          <img id="batchPreviewImg" src="" alt="" style="width:100%;object-fit:cover;max-height:200px" />
+        </div>
+        <div class="form-group"><label>Title</label><input type="text" id="batchTitle" placeholder="e.g. Untitled No. 3" /></div>
+        <div class="form-group"><label>Description</label><textarea id="batchDesc" placeholder="Medium, size, year, notes..."></textarea></div>
       </div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" id="modalFooter">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="btnAdd" onclick="addArtwork()">Add to Gallery</button>
+      <button class="btn btn-primary" id="btnNext" onclick="startBatch()" style="display:none">Next</button>
+      <button class="btn btn-primary" id="btnAdd" onclick="addArtwork()" style="display:none">Add to Gallery</button>
     </div>
   </div>
 </div>
@@ -191,6 +202,9 @@ var SUPABASE_URL = 'https://cosfeksbduckvwzcgdyv.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvc2Zla3NiZHVja3Z3emNnZHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODIzNjAsImV4cCI6MjA5NjI1ODM2MH0.lBuVcOKMhKbd0En-Abf98AA1XRkfPFJ_m-RhdltsTVQ';
 var DELETE_PASSWORD = 'Sienna123!';
 var pendingDeleteId = null;
+var batchFiles = [];
+var batchIndex = 0;
+var batchData = [];
 var STORAGE_BUCKET = 'artwork-images';
 var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var allArtworks = [];
@@ -325,21 +339,62 @@ function closePwd(cancel) {
   if (cancel) pendingDeleteId = null;
 }
 
+function startBatch() {
+  batchFiles = Array.from(document.getElementById('fileInput').files);
+  batchIndex = 0;
+  batchData = [];
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('step2').style.display = '';
+  document.getElementById('btnNext').style.display = 'none';
+  document.getElementById('btnAdd').style.display = '';
+  showBatchItem();
+}
+
+function showBatchItem() {
+  var file = batchFiles[batchIndex];
+  document.getElementById('batchProgress').textContent = 'Photo ' + (batchIndex + 1) + ' of ' + batchFiles.length + ' — fill in the details below';
+  document.getElementById('batchTitle').value = '';
+  document.getElementById('batchDesc').value = '';
+  document.getElementById('batchTitle').focus();
+  var reader = new FileReader();
+  reader.onload = function(ev) { document.getElementById('batchPreviewImg').src = ev.target.result; };
+  reader.readAsDataURL(file);
+  // Update button label
+  var isLast = batchIndex === batchFiles.length - 1;
+  document.getElementById('btnAdd').textContent = isLast ? 'Save All to Gallery' : 'Next Photo';
+}
+
 function openModal() {
   document.getElementById('modalOverlay').classList.add('open');
-  setTimeout(function(){ document.getElementById('inTitle').focus(); }, 300);
+  document.getElementById('btnAdd').style.display = 'none';
+  document.getElementById('btnNext').style.display = 'none';
 }
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
-  document.getElementById('inTitle').value=''; document.getElementById('inDesc').value='';
-  document.getElementById('fileInput').value=''; document.getElementById('preview').style.display='none';
+  document.getElementById('fileInput').value='';
+  document.getElementById('preview').style.display='none';
+  document.getElementById('previewImg').src='';
+  document.getElementById('step1').style.display='';
+  document.getElementById('step2').style.display='none';
+  document.getElementById('btnNext').style.display='none';
+  document.getElementById('btnAdd').style.display='';
+  document.getElementById('btnAdd').textContent='Add to Gallery';
+  document.getElementById('btnAdd').disabled=false;
+  batchFiles=[]; batchIndex=0; batchData=[];
 }
 function overlayClick(e) { if(e.target===document.getElementById('modalOverlay')) closeModal(); }
 function previewFile(e) {
-  var file = e.target.files[0]; if(!file) return;
+  var files = e.target.files;
+  if (!files.length) return;
+  var file = files[0];
   var reader = new FileReader();
-  reader.onload = function(ev) { document.getElementById('previewImg').src=ev.target.result; document.getElementById('preview').style.display='block'; };
+  reader.onload = function(ev) {
+    document.getElementById('previewImg').src = ev.target.result;
+    document.getElementById('preview').style.display = 'block';
+  };
   reader.readAsDataURL(file);
+  document.getElementById('btnNext').style.display = files.length > 1 ? '' : 'none';
+  document.getElementById('btnAdd').style.display = files.length > 1 ? 'none' : '';
 }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function showToast(msg) { var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},3000); }
