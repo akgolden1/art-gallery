@@ -41,6 +41,15 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
 .badge-claimed-tag{position:absolute;top:10px;right:10px;background:var(--claimed);color:white;font-size:.72rem;font-weight:500;padding:3px 10px;border-radius:20px}
 .no-img{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#bbb;font-size:.8rem;gap:8px}
 .no-img svg{width:36px;height:36px;opacity:.35}
+.carousel{position:relative;width:100%;height:100%}
+.carousel img{width:100%;height:100%;object-fit:cover;display:none}
+.carousel img.active{display:block}
+.carousel-btn{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.45);color:white;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.carousel-btn.prev{left:6px}
+.carousel-btn.next{right:6px}
+.carousel-dots{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);display:flex;gap:4px}
+.carousel-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.5);cursor:pointer}
+.carousel-dot.active{background:white}
 .artwork-body{padding:1rem 1.125rem 1.25rem;display:flex;flex-direction:column;flex:1}
 .artwork-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.4rem}
 .artwork-title{font-family:"Playfair Display",serif;font-size:1.05rem;font-weight:500;line-height:1.3}
@@ -81,8 +90,10 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
 .upload-area svg{width:32px;height:32px;color:var(--accent);margin:0 auto 8px;display:block}
 .upload-area p{font-size:.85rem;color:var(--muted)}
 .upload-area strong{color:var(--accent)}
-.upload-preview{margin-top:.75rem;border-radius:8px;overflow:hidden;max-height:200px;display:none}
-.upload-preview img{width:100%;object-fit:cover;max-height:200px}
+.upload-preview{margin-top:.75rem;display:none}
+.preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px}
+.preview-grid img{width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--border)}
+.preview-count{font-size:.8rem;color:var(--accent);font-weight:500;margin-bottom:6px}
 .modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:.75rem;justify-content:flex-end}
 .btn-cancel{background:var(--cream);color:var(--muted);border:1px solid var(--border);font-family:"DM Sans",sans-serif;font-size:.875rem;font-weight:500;padding:.55rem 1.25rem;border-radius:6px;cursor:pointer}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
@@ -133,11 +144,11 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
       <div class="form-group">
         <label>Photo</label>
         <div class="upload-area" id="uploadArea">
-          <input type="file" accept="image/*" id="fileInput" onchange="previewFile(event)" />
+          <input type="file" accept="image/*" id="fileInput" onchange="previewFile(event)" multiple />
           <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
-          <p><strong>Click to upload</strong> or drag and drop</p>
+          <p><strong>Click to upload</strong> or drag and drop<br><small style="color:#bbb">Select multiple photos at once - Max 5MB each</small></p>
         </div>
-        <div class="upload-preview" id="preview"><img id="previewImg" src="" alt="Preview" /></div>
+        <div class="upload-preview" id="preview"><div class="preview-count" id="previewCount"></div><div class="preview-grid" id="previewGrid"></div></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -150,8 +161,7 @@ main{max-width:1200px;margin:0 auto;padding:2rem 1.5rem}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 var SUPABASE_URL = 'https://cosfeksbduckvwzcgdyv.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvc2Zla3NiZHVja3Z3emNnZHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODIzNjAsImV4cCI6MjA5NjI1ODM2MH0.lBuVcOKMhKbd0En-Abf98AA1XRkfPFJ_m-RhdltsTVQ
-';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvc2Zla3NiZHVja3Z3emNnZHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODIzNjAsImV4cCI6MjA5NjI1ODM2MH0.lBuVcOKMhKbd0En-Abf98AA1XRkfPFJ_m-RhdltsTVQ';
 var STORAGE_BUCKET = 'artwork-images';
 var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var allArtworks = [];
@@ -192,7 +202,19 @@ function renderGrid(gridId, list, isClaimed) {
 }
 
 function makeCard(a, isClaimed) {
-  var img = a.image_url ? '<img src="' + esc(a.image_url) + '" alt="' + esc(a.title) + '" loading="lazy">' : '<div class="no-img"><svg fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><span>No photo</span></div>';
+  var urls = [];
+  try { urls = a.image_urls ? JSON.parse(a.image_urls) : []; } catch(e) { urls = []; }
+  if (!urls.length && a.image_url) urls = [a.image_url];
+  var img;
+  if (!urls.length) {
+    img = '<div class="no-img"><svg fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><span>No photo</span></div>';
+  } else if (urls.length === 1) {
+    img = '<img src="' + esc(urls[0]) + '" alt="' + esc(a.title) + '" loading="lazy">';
+  } else {
+    var slides = urls.map(function(u,i){ return '<img src="' + esc(u) + '" alt="' + esc(a.title) + '" loading="lazy" class="' + (i===0?'active':'') + '">'; }).join('');
+    var dots = urls.map(function(u,i){ return '<div class="carousel-dot' + (i===0?' active':'') + '" onclick="goSlide(' + a.id + ',' + i + ')"></div>'; }).join('');
+    img = '<div class="carousel" id="car-' + a.id + '">' + slides + (urls.length > 1 ? '<button class="carousel-btn prev" onclick="prevSlide(' + a.id + ')">&#8249;</button><button class="carousel-btn next" onclick="nextSlide(' + a.id + ')">&#8250;</button><div class="carousel-dots">' + dots + '</div>' : '') + '</div>';
+  }
   var date = a.created_at ? new Date(a.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '';
   var bottom = isClaimed
     ? '<div class="claimed-info"><div class="claimed-info-label">Claimed by</div><div class="claimed-info-name">' + esc(a.claimed_by) + '</div><button class="btn-unclaim" onclick="doUnclaim(' + a.id + ')">Remove claim</button></div>'
@@ -207,15 +229,17 @@ async function addArtwork() {
   var btn = document.getElementById('btnAdd');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving...';
   try {
-    var imageUrl = null;
-    var file = document.getElementById('fileInput').files[0];
-    if (file) {
-      var fname = 'art_' + Date.now() + '.' + file.name.split('.').pop();
+    var imageUrls = [];
+    var files = document.getElementById('fileInput').files;
+    for (var i = 0; i < files.length; i++) {
+      var file = files[i];
+      if (file.size > 5 * 1024 * 1024) { showToast('Photo ' + (i+1) + ' is over 5MB - skipping'); continue; }
+      var fname = 'art_' + Date.now() + '_' + i + '.' + file.name.split('.').pop();
       var up = await db.storage.from(STORAGE_BUCKET).upload(fname, file, {cacheControl:'3600',upsert:false});
       if (up.error) throw new Error('Upload failed: ' + up.error.message);
-      imageUrl = db.storage.from(STORAGE_BUCKET).getPublicUrl(fname).data.publicUrl;
+      imageUrls.push(db.storage.from(STORAGE_BUCKET).getPublicUrl(fname).data.publicUrl);
     }
-    var ins = await db.from('artworks').insert([{title:title,description:desc,image_url:imageUrl}]).select().single();
+    var ins = await db.from('artworks').insert([{title:title,description:desc,image_url:imageUrls[0]||null,image_urls:imageUrls.length?JSON.stringify(imageUrls):null}]).select().single();
     if (ins.error) throw new Error(ins.error.message);
     allArtworks.push(ins.data);
     allArtworks.sort(function(a,b){return a.id-b.id;});
@@ -272,14 +296,54 @@ function closeModal() {
 }
 function overlayClick(e) { if(e.target===document.getElementById('modalOverlay')) closeModal(); }
 function previewFile(e) {
-  var file=e.target.files[0]; if(!file) return;
-  var reader=new FileReader();
-  reader.onload=function(ev){ document.getElementById('previewImg').src=ev.target.result; document.getElementById('preview').style.display='block'; };
-  reader.readAsDataURL(file);
+  var files = e.target.files;
+  if (!files.length) return;
+  var grid = document.getElementById('previewGrid');
+  var count = document.getElementById('previewCount');
+  grid.innerHTML = '';
+  count.textContent = files.length + ' photo' + (files.length > 1 ? 's' : '') + ' selected';
+  document.getElementById('preview').style.display = 'block';
+  Array.from(files).forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = document.createElement('img');
+      img.src = ev.target.result;
+      grid.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
 }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function showToast(msg) { var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},3000); }
 
+function nextSlide(id) {
+  var car = document.getElementById('car-' + id);
+  if (!car) return;
+  var imgs = car.querySelectorAll('img');
+  var dots = car.querySelectorAll('.carousel-dot');
+  var cur = Array.from(imgs).findIndex(function(i){return i.classList.contains('active');});
+  imgs[cur].classList.remove('active'); if(dots[cur]) dots[cur].classList.remove('active');
+  var next = (cur + 1) % imgs.length;
+  imgs[next].classList.add('active'); if(dots[next]) dots[next].classList.add('active');
+}
+function prevSlide(id) {
+  var car = document.getElementById('car-' + id);
+  if (!car) return;
+  var imgs = car.querySelectorAll('img');
+  var dots = car.querySelectorAll('.carousel-dot');
+  var cur = Array.from(imgs).findIndex(function(i){return i.classList.contains('active');});
+  imgs[cur].classList.remove('active'); if(dots[cur]) dots[cur].classList.remove('active');
+  var prev = (cur - 1 + imgs.length) % imgs.length;
+  imgs[prev].classList.add('active'); if(dots[prev]) dots[prev].classList.add('active');
+}
+function goSlide(id, idx) {
+  var car = document.getElementById('car-' + id);
+  if (!car) return;
+  var imgs = car.querySelectorAll('img');
+  var dots = car.querySelectorAll('.carousel-dot');
+  imgs.forEach(function(i,n){ i.classList.toggle('active', n===idx); });
+  dots.forEach(function(d,n){ d.classList.toggle('active', n===idx); });
+}
 db.channel('artworks').on('postgres_changes',{event:'*',schema:'public',table:'artworks'},function(){loadArtworks();}).subscribe();
 loadArtworks();
 </script>
